@@ -17,29 +17,29 @@ HiChat.prototype = {
         var that = this;
         this.socket = io.connect();
         this.socket.on('connect', function() {
-            document.getElementById('info').textContent = 'get yourself a nickname :)';
+            document.getElementById('info').textContent = '设置昵称:';
             document.getElementById('nickWrapper').style.display = 'block';
             document.getElementById('nicknameInput').focus();
         });
         this.socket.on('nickExisted', function() {
-            document.getElementById('info').textContent = '!nickname is taken, choose another pls';
+            document.getElementById('info').textContent = '此昵称已存在聊天室中!';
         });
         this.socket.on('loginSuccess', function() {
-            document.title = 'hichat | ' + document.getElementById('nicknameInput').value;
-            document.getElementById('loginWrapper').style.display = 'none';
+            document.title = '聊天室 | ' + document.getElementById('nicknameInput').value;
+            document.getElementById('loginWrapper').style.display = 'none';//隐藏遮罩层显聊天界面
             document.getElementById('messageInput').focus();
         });
         this.socket.on('error', function(err) {
             if (document.getElementById('loginWrapper').style.display == 'none') {
-                document.getElementById('status').textContent = '!fail to connect :(';
+                document.getElementById('status').textContent = '链接失败';
             } else {
-                document.getElementById('info').textContent = '!fail to connect :(';
+                document.getElementById('info').textContent = '链接失败';
             }
         });
         this.socket.on('system', function(nickName, userCount, type) {
-            var msg = nickName + (type == 'login' ? ' joined' : ' left');
-            that._displayNewMsg('system ', msg, 'red');
-            document.getElementById('status').textContent = userCount + (userCount > 1 ? ' users' : ' user') + ' online';
+            var msg = nickName + (type == 'login' ? ' 加入' : ' 离开');
+            that._displayNewMsg('系统消息: ', msg, 'red');//that = hichat  显示message的设置
+            document.getElementById('status').textContent = '当前共有 ' + userCount + (userCount > 1 ? ' 个用户' : ' 个用户') + ' 在线';
         });
         this.socket.on('newMsg', function(user, msg, color) {
             that._displayNewMsg(user, msg, color);
@@ -70,8 +70,8 @@ HiChat.prototype = {
             messageInput.value = '';
             messageInput.focus();
             if (msg.trim().length != 0) {
-                that.socket.emit('postMsg', msg, color);
-                that._displayNewMsg('me', msg, color);
+                that.socket.emit('postMsg', msg, color);//把消息发送到服务器
+                that._displayNewMsg('me', msg, color);//把自己的消息显示到自己的窗口中
                 return;
             };
         }, false);
@@ -88,38 +88,48 @@ HiChat.prototype = {
         document.getElementById('clearBtn').addEventListener('click', function() {
             document.getElementById('historyMsg').innerHTML = '';
         }, false);
+        //选中图片时进入
         document.getElementById('sendImage').addEventListener('change', function() {
             if (this.files.length != 0) {
                 var file = this.files[0],
                     reader = new FileReader(),
                     color = document.getElementById('colorStyle').value;
+                //判断是否支持fileReader
                 if (!reader) {
-                    that._displayNewMsg('system', '!your browser doesn\'t support fileReader', 'red');
+                    that._displayNewMsg('系统消息: ', '您的浏览器不支持 fileReader', 'red');
                     this.value = '';
                     return;
                 };
+
+                //reader事件注册
                 reader.onload = function(e) {
                     this.value = '';
-                    that.socket.emit('img', e.target.result, color);
-                    that._displayImage('me', e.target.result, color);
+                    that.socket.emit('img', e.target.result, color);//发送给服务器
+                    that._displayImage('me', e.target.result, color);//显示在自己页面上
                 };
+
+                //传入需要读取的文件(reader.readAsDataURL将文件转化成base64编码)
                 reader.readAsDataURL(file);
             };
         }, false);
         this._initialEmoji();
+        //显示表情区域
         document.getElementById('emoji').addEventListener('click', function(e) {
             var emojiwrapper = document.getElementById('emojiWrapper');
             emojiwrapper.style.display = 'block';
             e.stopPropagation();
         }, false);
+        //隐藏表情区域
         document.body.addEventListener('click', function(e) {
             var emojiwrapper = document.getElementById('emojiWrapper');
             if (e.target != emojiwrapper) {
                 emojiwrapper.style.display = 'none';
             };
         });
+        //表情区域的点击事件
         document.getElementById('emojiWrapper').addEventListener('click', function(e) {
             var target = e.target;
+            //点击了 img标签内容
             if (target.nodeName.toLowerCase() == 'img') {
                 var messageInput = document.getElementById('messageInput');
                 messageInput.focus();
@@ -127,6 +137,8 @@ HiChat.prototype = {
             };
         }, false);
     },
+
+    //初始化表情区域
     _initialEmoji: function() {
         var emojiContainer = document.getElementById('emojiWrapper'),
             docFragment = document.createDocumentFragment();
@@ -143,7 +155,7 @@ HiChat.prototype = {
             msgToDisplay = document.createElement('p'),
             date = new Date().toTimeString().substr(0, 8),
             //determine whether the msg contains emoji
-            msg = this._showEmoji(msg);
+            msg = this._showEmoji(msg);//如果有表情则转换
         msgToDisplay.style.color = color || '#000';
         msgToDisplay.innerHTML = user + '<span class="timespan">(' + date + '): </span>' + msg;
         container.appendChild(msgToDisplay);
@@ -158,6 +170,8 @@ HiChat.prototype = {
         container.appendChild(msgToDisplay);
         container.scrollTop = container.scrollHeight;
     },
+
+    //转换为表情
     _showEmoji: function(msg) {
         var match, result = msg,
             reg = /\[emoji:\d+\]/g,
